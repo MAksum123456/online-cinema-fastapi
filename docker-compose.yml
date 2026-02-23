@@ -1,0 +1,47 @@
+services:
+  api:
+    build: .
+    container_name: api
+    command: uvicorn main --host 0.0.0.0 --port 8099 --reload
+    volumes:
+      - .:/app
+      - sqlite_data:/app/db
+    ports:
+      - "8000:8099"
+    depends_on:
+      - redis
+    environment:
+      - PYTHONPATH=/app
+
+  celery_worker:
+    build: .
+    container_name: celery_worker
+    command: celery -A src.celery_app.celery_app worker --loglevel=info --pool=solo
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - api
+    environment:
+      - PYTHONPATH=/app
+
+  celery_beat:
+    build: .
+    container_name: celery_beat
+    command: celery -A src.celery_app.celery_app beat --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - api
+    environment:
+      - PYTHONPATH=/app
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  sqlite_data:
